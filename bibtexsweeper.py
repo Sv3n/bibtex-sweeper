@@ -9,6 +9,7 @@ import bibtexparser
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.customization import author
 
+
 class BibTexSweeperConfig(object):
     replace            = {}
     typeAliases        = {}
@@ -22,16 +23,18 @@ class BibTexSweeperConfig(object):
     def load(cfgFile):
         with open(cfgFile, 'r') as f:
             config = json.loads(f.read())
-            BibTexSweeperConfig.replace         = config.get('replace', BibTexSweeperConfig.replace)
-            BibTexSweeperConfig.typeAliases     = config.get('typeAliases', BibTexSweeperConfig.typeAliases)
-            BibTexSweeperConfig.outputElements  = config.get('outputElements', BibTexSweeperConfig.outputElements)
-            BibTexSweeperConfig.protectStrings  = config.get('protectStrings', BibTexSweeperConfig.protectStrings)
-            BibTexSweeperConfig.etAlTreshold    = config.get('etAlTreshold', BibTexSweeperConfig.etAlTreshold)
-            BibTexSweeperConfig.protectElements = config.get('protectElements', BibTexSweeperConfig.protectElements)
+            BSC = BibTexSweeperConfig  # Abbreviation
+            BSC.replace         = config.get('replace', BSC.replace)
+            BSC.typeAliases     = config.get('typeAliases', BSC.typeAliases)
+            BSC.outputElements  = config.get('outputElements', BSC.outputElements)
+            BSC.protectStrings  = config.get('protectStrings', BSC.protectStrings)
+            BSC.etAlTreshold    = config.get('etAlTreshold', BSC.etAlTreshold)
+            BSC.protectElements = config.get('protectElements', BSC.protectElements)
 
             """ Make sure we never filter out the 'type' and 'id' """
-            for bibType, allowedElements in BibTexSweeperConfig.outputElements.items():
-                allowedElements.extend(BibTexSweeperConfig.baseOutputElements)
+            for bibType, allowedElements in BSC.outputElements.items():
+                allowedElements.extend(BSC.baseOutputElements)
+
 
 def iterRulesPerTypeAndKey(entries, rules, callback):
     for entry in entries:
@@ -44,6 +47,7 @@ def iterRulesPerTypeAndKey(entries, rules, callback):
             else:
                 callback(entry, elemRules)
 
+
 def protectStringsCb(entry, elemKey, strings):
     for string in strings:
         """ Abbreviations should start with a word boundary, hence the '\W' """
@@ -52,22 +56,27 @@ def protectStringsCb(entry, elemKey, strings):
         #m0 = re.match(rex, entry[elemKey])
         entry[elemKey] = re.sub(rex, r'\1{' + re.escape(string) + r'}\2', entry[elemKey])
 
+
 def protectElementsCb(entry, elementsToProtect):
     for elem in elementsToProtect:
         if elem in entry:
             entry[elem] = ''.join(['{', entry[elem], '}'])
 
+
 def protectElements(entries, rules):
     iterRulesPerTypeAndKey(entries, rules, protectElementsCb)
 
+
 def protectStrings(entries, rules):
     iterRulesPerTypeAndKey(entries, rules, protectStringsCb)
+
 
 def removeUnwantedElements(entries, rules):
     for bibType, allowedElements in rules.items():
         for i, entry in enumerate(entries):
             if entry['type'] == bibType:
                 entries[i] = {key: val for key, val in entry.items() if key in allowedElements}
+
 
 def replaceInEntry(entry, typeRules):
     for key, pairs in typeRules.items():
@@ -79,6 +88,7 @@ def replaceInEntry(entry, typeRules):
         except KeyError:
             pass
 
+
 def replace(entries, rules):
     """ Apply the replacement rules to the entries """
     for bibType, typeRules in rules.items():
@@ -86,12 +96,14 @@ def replace(entries, rules):
             if entry['type'] == bibType or bibType == "all":
                 replaceInEntry(entry, typeRules)
 
+
 def removeAliases(entries, rules):
     """ Remove types which are aliases for other types """
     for bibType, aliases in rules.items():
         for entry in entries:
             if entry['type'] in aliases:
                 entry['type'] = bibType
+
 
 def expandOptElement(entry, key):
     """ Choose the prefixed element over the regular element if it is longer """
@@ -105,11 +117,13 @@ def expandOptElement(entry, key):
         entry[keyNoOpt] = entry[key]
     del entry[key]
 
+
 def expandOptElements(entries):
     for entry in entries:
         for key, elem in entry.items():
             if key.startswith('opt'):
                 expandOptElement(entry, key)
+
 
 def checkRequiredWithList(entry, required):
     """ If the element in the 'required' list is a tuple, then at least one of the items (or)
@@ -131,6 +145,7 @@ def checkRequiredWithList(entry, required):
             #f = urllib.urlopen("%s%s" % (url, params))
             #print(f.read())
 
+
 def checkRequired(entries):
     requiredBase = [('organization', 'author', 'institution'), 'title']
     requiredPerType = {'inproceedings': requiredBase + ['pages', 'year', 'booktitle']}
@@ -139,24 +154,26 @@ def checkRequired(entries):
         req = requiredPerType.get(entry['type'], requiredBase)
         checkRequiredWithList(entry, req)
 
+
 def checkEtAl(entries):
     """ Make sure et al. is not embedded in the author string """
     for entry in entries:
         try:
             if 'et al.' in entry['author']:
-                print('WARNING: entry {id} contains et al. embedded in author string.'.format(id = entry['id']))
+                print('WARNING: entry {id} contains et al. embedded in author string.'.format(id=entry['id']))
         except KeyError:
             pass
+
 
 def checkBookTitleYear(entries):
     """ Make sure there is no reference to a year in the booktitle entries """
     for entry in entries:
         try:
-            title = entry['booktitle'] # KeyError exception triggers here.
-            m0 = re.match(r'.*\'\d{2}.*', title) # Quoted year, i.e. '95
+            title = entry['booktitle']  # KeyError exception triggers here.
+            m0 = re.match(r'.*\'\d{2}.*', title)  # Quoted year, i.e. '95
             m1 = re.match(r'.*\d{4}.*', title)   # Full year
             if m0 is not None or m1 is not None:
-                print('WARNING: entry {id} may contain year in booktitle ({booktitle}).'.format(id = entry['id'], booktitle = title))
+                print('WARNING: entry {id} may contain year in booktitle ({booktitle}).'.format(id=entry['id'], booktitle=title))
 
                 if 'year' not in entry:
                     print('         The "year" element is free. Consider moving it there.')
@@ -165,6 +182,7 @@ def checkBookTitleYear(entries):
 
         except KeyError:
             pass
+
 
 def getBblEntries(bblFile):
     """ Returns the ids of the enties found in the bblFile, based on a simple regex """
@@ -176,10 +194,12 @@ def getBblEntries(bblFile):
                 entries.append(m.group(1))
     return entries
 
+
 def filterEntriesWithBbl(entries, bblFile):
     bblEntries = getBblEntries(bblFile)
     entries = [x for x in entries if x['id'] in bblEntries]
     return entries
+
 
 def applyEtAlTreshold(entries, etAlTreshold):
     if etAlTreshold == 0:
@@ -193,7 +213,7 @@ def applyEtAlTreshold(entries, etAlTreshold):
             if nAuthors > etAlTreshold:
                 """ Chop extra authors, and append 'et al.' """
                 entry['author'] = entry['author'][:etAlTreshold]
-                entry['author'][etAlTreshold-1] = entry['author'][etAlTreshold-1].replace(',', '~{\it{et al.}},')
+                entry['author'][etAlTreshold - 1] = entry['author'][etAlTreshold - 1].replace(',', '~{\it{et al.}},')
             # Convert back into regular string:
             entry['author'] = ' and '.join(entry['author'])
         except KeyError:
@@ -206,6 +226,7 @@ def parseArguments():
     parser.add_argument('--bbl',      dest='bbl',      type=str, required=False, default=None,  help='bbl file. Only the entries in the bbl file will be processed.')
     parser.add_argument('--config',   dest='config',   type=str, required=False, default=None,  help='config file.')
     return parser.parse_args()
+
 
 def main():
     args = parseArguments()
