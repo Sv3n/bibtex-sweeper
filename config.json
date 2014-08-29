@@ -1,0 +1,51 @@
+{
+    "etAlTreshold": 4,
+    "protectStrings": {
+        "all": {
+            "title": ["DRAM",
+                      "SDRAM",
+                      "FPGA",
+                      "WCET",
+                      "ITRS",
+                      "DDR",
+                      "MPSOC"
+            ]
+        }
+    },
+    "typeAliases": {
+        "inproceedings": ["conference", "proceedings"]
+    },
+    "outputElements": {
+        "inproceedings": ["author", "booktitle", "title", "year", "pages"],
+        "article":       ["author", "journal",   "title", "year", "pages", "number", "volume"],
+        "manual":        ["title", "edition", "year", "organization"]
+    },
+    "replace": {
+        "inproceedings": {
+            "booktitle": [
+                ["Annals"            , "Ann."],
+                ["Annual"            , "Annu."],
+                ["Colloquium"        , "Colloq."],
+                ["Conference"        , "Conf."],
+                ["Congress"          , "Congr."],
+                ["Convention"        , "Conv."],
+                ["Digest"            , "Dig."],
+                ["Exposition"        , "Expo."],
+                ["International"     , "Int."],
+                ["National"          , "Nat."],
+                ["Proceedings"       , "Proc."],
+                ["Record"            , "Rec."],
+                ["Symposium"         , "Symp."],
+                ["Technical Digest"  , "Tech. Dig."],
+                ["Technical Paper"   , "Tech. Paper"],
+                ["First"             , "1st"],
+                ["Second"            , "2nd"],
+                ["Third"             , "3rd"],
+                ["Fourth"            , "4th"]
+            ]
+        }
+    },
+    "protectElements": {
+        "manual": ["edition", "organization"]
+    }
+}
