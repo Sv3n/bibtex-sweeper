@@ -1,5 +1,6 @@
 {
-    "etAlTreshold": 4,
+    "etAlTreshold": 2,
+    "etAlIeeeMode": 1,
     "protectStrings": {
         "all": {
             "title": ["DRAM",
@@ -25,6 +26,7 @@
             "booktitle": [
                 ["Annals"            , "Ann."],
                 ["Annual"            , "Annu."],
+                ["Applications"      , "Applicat."],
                 ["Colloquium"        , "Colloq."],
                 ["Conference"        , "Conf."],
                 ["Congress"          , "Congr."],
@@ -41,7 +43,10 @@
                 ["First"             , "1st"],
                 ["Second"            , "2nd"],
                 ["Third"             , "3rd"],
-                ["Fourth"            , "4th"]
+                ["Fourth"            , "4th"],
+                ["Computer"          , "Comput."],
+                ["Computers"         , "Comput."],
+                ["Systems"           , "Syst."]
             ]
         }
     },

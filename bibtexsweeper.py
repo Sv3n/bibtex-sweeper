@@ -18,6 +18,7 @@ class BibTexSweeperConfig(object):
     protectStrings     = {}
     protectElements    = {}
     etAlTreshold       = 0
+    etAlIeeeMode       = 0
 
     @staticmethod
     def load(cfgFile):
@@ -29,6 +30,7 @@ class BibTexSweeperConfig(object):
             BSC.outputElements  = config.get('outputElements', BSC.outputElements)
             BSC.protectStrings  = config.get('protectStrings', BSC.protectStrings)
             BSC.etAlTreshold    = config.get('etAlTreshold', BSC.etAlTreshold)
+            BSC.etAlIeeeMode    = config.get('etAlIeeeMode', BSC.etAlIeeeMode)
             BSC.protectElements = config.get('protectElements', BSC.protectElements)
 
             """ Make sure we never filter out the 'type' and 'id' """
@@ -133,7 +135,6 @@ def checkRequiredWithList(entry, required):
         if type(req) is tuple:
             tmp = [x for x in req if x in entry]
             if len(tmp) == 0:
-                print(entry, req)
                 """None of the required options found"""
                 print('WARNING: entry %s misses required field %s.' % (entry['id'], req))
 
@@ -201,9 +202,14 @@ def filterEntriesWithBbl(entries, bblFile):
     return entries
 
 
-def applyEtAlTreshold(entries, etAlTreshold):
+def applyEtAlTreshold(entries, etAlTreshold, etAlIeeeMode):
     if etAlTreshold == 0:
         return
+
+    if etAlIeeeMode == 1:
+        remainingLength = 1
+    else:
+        remainingLength = etAlTreshold
 
     for entry in entries:
         """ Apply authors customization """
@@ -212,8 +218,8 @@ def applyEtAlTreshold(entries, etAlTreshold):
             nAuthors = len(entry['author'])
             if nAuthors > etAlTreshold:
                 """ Chop extra authors, and append 'et al.' """
-                entry['author'] = entry['author'][:etAlTreshold]
-                entry['author'][etAlTreshold - 1] = entry['author'][etAlTreshold - 1].replace(',', '~{\it{et al.}},')
+                entry['author'] = entry['author'][:remainingLength]
+                entry['author'][remainingLength - 1] = entry['author'][remainingLength - 1].replace(',', '~{\it{et al.}},')
             # Convert back into regular string:
             entry['author'] = ' and '.join(entry['author'])
         except KeyError:
@@ -255,7 +261,7 @@ def main():
         checkBookTitleYear(entries)
 
         """ Apply author customization """
-        applyEtAlTreshold(entries, BibTexSweeperConfig.etAlTreshold)
+        applyEtAlTreshold(entries, BibTexSweeperConfig.etAlTreshold, BibTexSweeperConfig.etAlIeeeMode)
 
         """ Plug the entries back into the parser object. """
         db.entries = entries
