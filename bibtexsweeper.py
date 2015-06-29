@@ -13,7 +13,7 @@ from bibtexparser.customization import author
 class BibTexSweeperConfig(object):
     replace            = {}
     typeAliases        = {}
-    baseOutputElements = {'id', 'type'}
+    baseOutputElements = {'ID', 'ENTRYTYPE'}
     outputElements     = {}
     protectStrings     = {}
     protectElements    = {}
@@ -33,7 +33,7 @@ class BibTexSweeperConfig(object):
             BSC.etAlIeeeMode    = config.get('etAlIeeeMode', BSC.etAlIeeeMode)
             BSC.protectElements = config.get('protectElements', BSC.protectElements)
 
-            """ Make sure we never filter out the 'type' and 'id' """
+            """ Make sure we never filter out the 'ENTRYTYPE' and 'ID' """
             for bibType, allowedElements in BSC.outputElements.items():
                 allowedElements.extend(BSC.baseOutputElements)
 
@@ -41,7 +41,7 @@ class BibTexSweeperConfig(object):
 def iterRulesPerTypeAndKey(entries, rules, callback):
     for entry in entries:
         for bibType, elemRules in rules.items():
-            if entry['type'] != bibType and bibType != "all":
+            if entry['ENTRYTYPE'] != bibType and bibType != "all":
                 continue
             if type(elemRules) is dict:
                 for elemKey, remainder in elemRules.items():
@@ -76,7 +76,7 @@ def protectStrings(entries, rules):
 def removeUnwantedElements(entries, rules):
     for bibType, allowedElements in rules.items():
         for i, entry in enumerate(entries):
-            if entry['type'] == bibType:
+            if entry['ENTRYTYPE'] == bibType:
                 entries[i] = {key: val for key, val in entry.items() if key in allowedElements}
 
 
@@ -95,7 +95,7 @@ def replace(entries, rules):
     """ Apply the replacement rules to the entries """
     for bibType, typeRules in rules.items():
         for entry in entries:
-            if entry['type'] == bibType or bibType == "all":
+            if entry['ENTRYTYPE'] == bibType or bibType == "all":
                 replaceInEntry(entry, typeRules)
 
 
@@ -103,8 +103,8 @@ def removeAliases(entries, rules):
     """ Remove types which are aliases for other types """
     for bibType, aliases in rules.items():
         for entry in entries:
-            if entry['type'] in aliases:
-                entry['type'] = bibType
+            if entry['ENTRYTYPE'] in aliases:
+                entry['ENTRYTYPE'] = bibType
 
 
 def expandOptElement(entry, key):
@@ -136,10 +136,10 @@ def checkRequiredWithList(entry, required):
             tmp = [x for x in req if x in entry]
             if len(tmp) == 0:
                 """None of the required options found"""
-                print('WARNING: entry %s misses required field %s.' % (entry['id'], req))
+                print('WARNING: entry %s misses required field %s.' % (entry['ID'], req))
 
         elif req not in entry:
-            print('WARNING: entry %s (%s) misses required field %s.' % (entry['id'], entry['title'], req))
+            print('WARNING: entry %s (%s) misses required field %s.' % (entry['ID'], entry['title'], req))
             #import urllib
             #params = urllib.urlencode({'q': entry['title'], 'format': 'json'})
             #url = 'http://dblp.org/search/api/?'
@@ -152,7 +152,7 @@ def checkRequired(entries):
     requiredPerType = {'inproceedings': requiredBase + ['pages', 'year', 'booktitle']}
 
     for entry in entries:
-        req = requiredPerType.get(entry['type'], requiredBase)
+        req = requiredPerType.get(entry['ENTRYTYPE'], requiredBase)
         checkRequiredWithList(entry, req)
 
 
@@ -161,7 +161,7 @@ def checkEtAl(entries):
     for entry in entries:
         try:
             if 'et al.' in entry['author']:
-                print('WARNING: entry {id} contains et al. embedded in author string.'.format(id=entry['id']))
+                print('WARNING: entry {id} contains et al. embedded in author string.'.format(id=entry['ID']))
         except KeyError:
             pass
 
@@ -174,7 +174,7 @@ def checkBookTitleYear(entries):
             m0 = re.match(r'.*\'\d{2}.*', title)  # Quoted year, i.e. '95
             m1 = re.match(r'.*\d{4}.*', title)   # Full year
             if m0 is not None or m1 is not None:
-                print('WARNING: entry {id} may contain year in booktitle ({booktitle}).'.format(id=entry['id'], booktitle=title))
+                print('WARNING: entry {id} may contain year in booktitle ({booktitle}).'.format(id=entry['ID'], booktitle=title))
 
                 if 'year' not in entry:
                     print('         The "year" element is free. Consider moving it there.')
@@ -189,16 +189,15 @@ def getBblEntries(bblFile):
     """ Returns the ids of the enties found in the bblFile, based on a simple regex """
     entries = []
     with open(bblFile, 'r') as f:
-        for line in f:
-            m = re.match(r'\\bibitem{([\w\-_]+)}', line)
-            if m is not None:
-                entries.append(m.group(1))
+        lines = f.read()
+        entries.extend(re.findall(r'\\bibitem\[.*?\]{([\w\-_]+)}', lines, flags=re.DOTALL | re.MULTILINE))
+        entries.extend(re.findall(r'\\bibitem{([\w\-_]+)}', lines, flags=re.DOTALL | re.MULTILINE))
     return entries
 
 
 def filterEntriesWithBbl(entries, bblFile):
     bblEntries = getBblEntries(bblFile)
-    entries = [x for x in entries if x['id'] in bblEntries]
+    entries = [x for x in entries if x['ID'] in bblEntries]
     return entries
 
 
@@ -221,6 +220,8 @@ def applyEtAlTreshold(entries, etAlTreshold, etAlIeeeMode):
                 entry['author'] = entry['author'][:remainingLength]
                 entry['author'][remainingLength - 1] = entry['author'][remainingLength - 1].replace(',', '~{\it{et al.}},')
             # Convert back into regular string:
+            if nAuthors == 1 and entry['author'][0].split(' ') == 1:
+                entry['author'][0] = '{{{author}}}'.format(author=entry['author'][0])
             entry['author'] = ' and '.join(entry['author'])
         except KeyError:
             pass
@@ -231,6 +232,7 @@ def parseArguments():
     parser.add_argument('--bib',      dest='bib',      type=str, required=True,  default=None,  help='Bibtex file')
     parser.add_argument('--bbl',      dest='bbl',      type=str, required=False, default=None,  help='bbl file. Only the entries in the bbl file will be processed.')
     parser.add_argument('--config',   dest='config',   type=str, required=False, default=None,  help='config file.')
+    parser.add_argument('--out',      dest='out',      type=str, required=False, default='out.bib',  help='Target bibtex file')
     return parser.parse_args()
 
 
@@ -238,6 +240,8 @@ def main():
     args = parseArguments()
 
     if args.config is not None:
+        if args.config == args.bib:
+            args.config = args.bib + '_config.json'
         BibTexSweeperConfig.load(args.config)
 
     with open(args.bib, 'r') as bibfile:
@@ -267,10 +271,10 @@ def main():
         db.entries = entries
         db._entries_dict = {}
 
-        with open('out.json', 'w') as f:
-            f.write(json.dumps(entries))
+        # with open('out.json', 'w') as f:
+        #     f.write(json.dumps(entries))
 
-        with codecs.open('out.bib', 'w', 'utf-8') as f:
+        with codecs.open(args.out, 'w', 'utf-8') as f:
             bibtexparser.dump(db, f)
 
 if __name__ == '__main__':
